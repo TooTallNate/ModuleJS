@@ -2,12 +2,12 @@
   // cache of loaded/loading modules
   var modules = {};
 
+  // Gets a module from the cache based on it's absolute path
   function getModule(path) {
     var m = modules[path];
     if (!m) {
       m = modules[path] = new Module(path);
     }
-
     return m;
   }
 
@@ -23,7 +23,14 @@
     self.path = absolutePath;
     self.loaded = false;
 
-    self.global.exports = self.exports = {};
+    var module = {};
+    var exports = {};
+    self.module = module;
+    self.exports = exports;
+    module.exports = exports;
+
+    self.global.module = module;
+    self.global.exports = exports;
     self.global.load = function(deps, factory) {
       self._deps = deps;
       self._factory = factory;
@@ -70,6 +77,12 @@
     } else {
       console.log("ModuleJS: Module DIDN'T call 'load()': " + this.path);
 
+      if (this.module.exports !== this.exports) {
+        console.log("ModuleJS: 'module.exports' was set: " + this.path);
+        // 'module.exports' property was directly set
+        this.exports = this.module.exports;
+      }
+
       // Module has no dependencies...
       this._notifyLoaded();
     }
@@ -104,16 +117,26 @@
   Module.prototype._executeFactory = function() {
     console.log("ModuleJS: Executing Module Factory: " + this.path);
 
-    // At this point, we know that any deps are loaded
-    var exports = [];
+    // At this point, we know that any deps are loaded, so get the
+    // 'exports' object from the loaded Module instance.
+    var deps = [];
     for (var i=0, l=this._modules.length; i<l; i++) {
-      exports[i] = this._modules[i].exports;
+      deps[i] = this._modules[i].exports;
     }
-    this.global.__deps = exports;
+    this.global.__deps = deps;
     this.global.__factory = this._factory;
-    this.eval('__factory.apply(exports, __deps)');
+    var rtn = this.eval('__factory.apply(exports, __deps)');
     delete this.global.__deps;
     delete this.global.__factory;
+    if (this.module.exports !== this.exports) {
+      console.log("ModuleJS: 'module.exports' was set: " + this.path);
+      // 'module.exports' property was directly set
+      this.exports = this.module.exports;
+    } else if (!!rtn && rtn !== this.exports) {
+      console.log("ModuleJS: Object returned from factory function: " + this.path);
+      // something was 'return'ed from the factory function
+      this.exports = rtn;
+    }
   }
   Module.prototype._absolutize = function(dep) {
     return dep;
