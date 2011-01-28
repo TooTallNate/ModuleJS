@@ -1,0 +1,3 @@
+[submodule "SandboxJS"]
+	path = SandboxJS
+	url = https://github.com/TooTallNate/SandboxJS.git
