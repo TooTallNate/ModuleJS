@@ -11,15 +11,10 @@
     return m;
   }
 
+  // Logging function, since I can't seem to get `console.log` to work in the modules...
   function print() {
     for (var i=0, l=arguments.length; i<l; i++) {
       document.getElementById("stdout").innerHTML += arguments[i] + '\n';
-    }
-  }
-
-  var fakeConsole = {
-    log: function() {
-      window.eval("console.log('log')");
     }
   }
 
@@ -27,7 +22,7 @@
   // that gets loaded. It has an absolute path, an "exports"
   // Object that gets injected into the module's sandbox scope.
   function Module(absolutePath) {
-    //console.log("ModuleJS: Creating Module, path: " + absolutePath);
+    console.log("ModuleJS: Creating Module, path: " + absolutePath);
 
     var self = this;
     Sandbox.apply(self, arguments);
@@ -52,7 +47,6 @@
       self._deps = deps;
       self._factory = factory;
     }
-    self.global.console = fakeConsole;
     self.global.print = print;
 
     // HACK: Firefox (probably others) seem to need us to wait
