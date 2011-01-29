@@ -191,6 +191,63 @@
     return Object.prototype.toString.call(array) === '[object Array]';
   }
 
+  // Respectfully borrowed from BravoJS.
+
+  /** Canonicalize path, compacting slashes and dots per basic UNIX rules.
+   *  Treats paths with trailing slashes as though they end with INDEX instead.
+   *  Not rigorous. */
+  function realpath(path) {
+    if (typeof path !== "string")
+      path = path.toString();
+
+    var oldPath = path.split('/');
+    var newPath = [];
+    var i;
+
+    if (path.charAt(path.length - 1) === '/')
+      oldPath.push("INDEX");
+
+    for (i = 0; i < oldPath.length; i++) {
+      if (oldPath[i] == '.' || !oldPath[i].length)
+        continue;
+      if (oldPath[i] == '..') {
+        if (!newPath.length)
+          throw new Error("Invalid module path: " + path);
+        newPath.pop();
+        continue;
+      }
+      newPath.push(oldPath[i]);
+    }
+
+    newPath.unshift('');
+    return newPath.join('/');
+  }
+
+  /** Extract the non-directory portion of a path */
+  function basename(path) {
+    if (typeof path !== "string")
+      path = path.toString();
+
+    var s = path.split('/').slice(-1).join('/');
+    if (!s)
+      return path;
+    return s;
+  }
+
+  /** Extract the directory portion of a path */
+  function dirname(path) {
+    if (typeof path !== "string")
+      path = path.toString();
+
+    if (path.charAt(path.length - 1) === '/')
+      return path.slice(0,-1);
+
+    var s = path.split('/').slice(0,-1).join('/');
+    if (!s)
+      return ".";
+
+    return s;
+  }
 
   // For testing. API will most definitely change...
   function start(path) {
