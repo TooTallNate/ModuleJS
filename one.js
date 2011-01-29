@@ -1,6 +1,6 @@
 load(['./two.js'], function(two) {
-  console.log("Logging from 'one.js'");
-  console.log(two);
+  print("Logging from 'one.js'");
+  print('two.works: ' + two.works);
 
   exports.one = two;
   this.another = 1;

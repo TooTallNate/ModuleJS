@@ -11,11 +11,23 @@
     return m;
   }
 
+  function print() {
+    for (var i=0, l=arguments.length; i<l; i++) {
+      document.getElementById("stdout").innerHTML += arguments[i] + '\n';
+    }
+  }
+
+  var fakeConsole = {
+    log: function() {
+      return console.log.apply(console, arguments);
+    }
+  }
+
   // The Module class is instantiated once per module
   // that gets loaded. It has an absolute path, an "exports"
   // Object that gets injected into the module's sandbox scope.
   function Module(absolutePath) {
-    console.log("ModuleJS: Creating Module, path: " + absolutePath);
+    //console.log("ModuleJS: Creating Module, path: " + absolutePath);
 
     var self = this;
     Sandbox.apply(self, arguments);
@@ -35,12 +47,17 @@
       self._deps = deps;
       self._factory = factory;
     }
-    self.global.console = console;
+    self.global.console = fakeConsole;
+    self.global.print = print;
 
-    // load the remote script
-    self.load(self.path, function() {
-      self._onLoad.apply(self, arguments);
-    });
+    // HACK: Firefox (probably others) seem to need us to wait
+    // a few ms before adding the <script> to the <iframe>
+    setTimeout(function() {
+      // load the remote script, invoke '_onLoad' when it finishes
+      self.load(self.path, function() {
+        self._onLoad.apply(self, arguments);
+      });
+    }, 50);
   }
   extend(Module, Sandbox);
   // Internal function that gets called after the script is
@@ -75,11 +92,11 @@
       }
       this._checkDeps();
     } else {
-      console.log("ModuleJS: Module DIDN'T call 'load()': " + this.path);
+      console.log("ModuleJS: Module did not call 'load()': " + this.path);
 
       if (this.module.exports !== this.exports) {
         console.log("ModuleJS: 'module.exports' was set: " + this.path);
-        // 'module.exports' property was directly set
+        // 'module.exports' property was directly set, outside of 'load()'
         this.exports = this.module.exports;
       }
 
@@ -125,6 +142,7 @@
     }
     this.global.__deps = deps;
     this.global.__factory = this._factory;
+    // Eval in the module's isolated Sandbox
     var rtn = this.eval('__factory.apply(exports, __deps)');
     delete this.global.__deps;
     delete this.global.__factory;
@@ -144,21 +162,20 @@
 
   // Extends a the prototype of a Constructor Function
   // with the prototype of a Super Function
-  function extend(con, super) {
+  function extend(con, sup) {
     function bare() {}
-    bare.prototype = super.prototype;
+    bare.prototype = sup.prototype;
     con.prototype = new bare;
     con.prototype.constructor = con;
+    bare = undefined;
   }
 
 
-  // The "load" function. Available at the global level
-  // of every module. Can/Should be used to define any
-  // dependencies of a module before executing the factory
+  // For testing. API will most definitely change...
   function start(path) {
     new Module(path);
   }
-  //window['load'] = load;
   window['start'] = start;
-})();
 
+  window['Module'] = Module;
+})();
