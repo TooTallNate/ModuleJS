@@ -19,7 +19,7 @@
 
   var fakeConsole = {
     log: function() {
-      return console.log.apply(console, arguments);
+      window.eval("console.log('log')");
     }
   }
 
@@ -44,6 +44,11 @@
     self.global.module = module;
     self.global.exports = exports;
     self.global.load = function(deps, factory) {
+      if (!isArray(deps)) {
+        var argc = arguments.length;
+        factory = arguments[argc-1];
+        deps = Array.prototype.slice.call(arguments, 0, argc-2);
+      }
       self._deps = deps;
       self._factory = factory;
     }
@@ -104,9 +109,14 @@
       this._notifyLoaded();
     }
   }
+  // Add a listener. Currently the only event is 'load', which need-not be specified
   Module.prototype.addListener = function(callback) {
     this.loadListeners.push(callback);
   }
+  // Called immediately after the script loads from the remote,
+  // and once every time one of the module's defined dependencies
+  // fires off it's load event. If all required deps have finished
+  // loading, then it's time for this module to finish loading
   Module.prototype._checkDeps = function(err) {
     var self = this;
     var loaded = true;
@@ -114,10 +124,15 @@
       var m = self._modules[i];
       if (!m.loaded) {
         loaded = false;
+        break;
       }
     }
     if (loaded) this._notifyLoaded();
   }
+  // Called after all dependencies have been satisfied. If a
+  // factory function had been defined in the 'load()' call,
+  // then it is invoked. Then all load listeners for this module
+  // are notified. Also sets the 'loaded' flag to true
   Module.prototype._notifyLoaded = function(err) {
     this.loaded = true;
     this.error = err;
@@ -131,6 +146,11 @@
       li[i](err);
     }
   }
+  // Executes the factory function that was defined in the 'load()'
+  // call. It first collects the 'exports' of all dependency modules,
+  // then evals the factory function in the module's isolated scope.
+  // The return value is checked, as well as 'module.exports' to see
+  // if they were set, which will override 'exports' if set.
   Module.prototype._executeFactory = function() {
     console.log("ModuleJS: Executing Module Factory: " + this.path);
 
@@ -156,6 +176,8 @@
       this.exports = rtn;
     }
   }
+  // Returns an absolutized version of the dependency name, based on
+  // this module's base path, etc. '..', '.', are normalized.
   Module.prototype._absolutize = function(dep) {
     return dep;
   }
@@ -168,6 +190,11 @@
     con.prototype = new bare;
     con.prototype.constructor = con;
     bare = undefined;
+  }
+
+  // Not implemented in most browsers...
+  function isArray(array) {
+    return Object.prototype.toString.call(array) === '[object Array]';
   }
 
 
