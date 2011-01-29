@@ -46,8 +46,8 @@
     self.global.load = function(deps, factory) {
       if (!isArray(deps)) {
         var argc = arguments.length;
+        deps = Array.prototype.slice.call(arguments, 0, argc-1);
         factory = arguments[argc-1];
-        deps = Array.prototype.slice.call(arguments, 0, argc-2);
       }
       self._deps = deps;
       self._factory = factory;
