@@ -1,7 +1,8 @@
-load(['./two.js'], function(two) {
+load('./three.js', function(three) {
   print("Logging from 'one.js'");
-  print('two.works: ' + two.works);
+  //print('two.works: ' + two.works);
+  print( three.times(5) );
 
-  exports.one = two;
+  exports.three = three;
   this.another = 1;
 });
