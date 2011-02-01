@@ -7,10 +7,14 @@
     <script type="text/javascript" src="../../Module.js"></script>
     <script type="text/javascript">
       window.onload = function() {
-        start("main.js");
+        module.provide('underscore', 'http://documentcloud.github.com/underscore/underscore.js');
+        module.load('./main', function(main) {
+          console.log("DONE!");
+        });
       }
     </script>
   </head>
   <body>
+    <textarea id="stdout"></textarea>
   </body>
 </html>

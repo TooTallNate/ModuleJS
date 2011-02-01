@@ -3,17 +3,21 @@
   <head>
     <title>ModuleJS: Asynchronous CommonJS Module Loader for the web-browser</title>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <script type="text/javascript" src="SandboxJS/Sandbox.js"></script>
-    <script type="text/javascript" src="Module.js"></script>
+    <link rel="stylesheet" type="text/css" href="console.css">
+    <script type="text/javascript" src="../SandboxJS/Sandbox.js"></script>
+    <script type="text/javascript" src="../Module.js"></script>
     <script type="text/javascript">
       window.onload = function() {
-        start("test.js");
+        module.load('./test', function(test) {
+          conosle.log("Done!");
+        });
       }
     </script>
   </head>
   <body style="width:100%;height:100%;padding:0;margin:0;">
-    <div>
-      <textarea id="stdout" rows="30" style="display:block;width:100%;height:100%;"></textarea>
+    <div id="console">
+      <textarea id="stdout" rows="35" cols="100"></textarea>
+      <input type="text" id="input" />
     </div>
   </body>
 </html>
