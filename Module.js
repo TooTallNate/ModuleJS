@@ -30,23 +30,10 @@
     self.path = absolutePath;
     self.loaded = false;
 
-    var module = {};
-    var exports = {};
-    self.module = module;
-    self.exports = exports;
-    module.exports = exports;
+    createModule.call(self, absolutePath);
 
-    self.global.module = module;
-    self.global.exports = exports;
-    self.global.load = function(deps, factory) {
-      if (!isArray(deps)) {
-        var argc = arguments.length;
-        deps = Array.prototype.slice.call(arguments, 0, argc-1);
-        factory = arguments[argc-1];
-      }
-      self._deps = deps;
-      self._factory = factory;
-    }
+    self.global.module = self.module;
+    self.global.exports = self.exports;
     self.global.print = print;
 
     // HACK: Firefox (probably others) seem to need us to wait
@@ -72,114 +59,140 @@
   Module.prototype._onLoad = function(err) {
     console.log("ModuleJS: Module <script> onload, path: " + this.path);
 
-    if (err) {
-      console.log("ModuleJS: Module failed to load: " + this.path);
-
-      // Module failed to load!
-      this._notifyLoaded(err);
-      return;
-    }
-
     var self = this;
-    if (this._deps && this._deps.length > 0) {
-      console.log("ModuleJS: Module has depencencies: " + this.path + ", " + this._deps);
-
-      this._modules = [];
-      for (var i=0, l=this._deps.length; i<l; i++) {
-        var m = getModule(this._absolutize(this._deps[i]));
-        if (!m.loaded) {
-          m.addListener(function() {
-            self._checkDeps.apply(self, arguments);
-          });
-        }
-        this._modules.push(m);
-      }
-      this._checkDeps();
-    } else {
+    if (!self._loadCalled) {
       console.log("ModuleJS: Module did not call 'load()': " + this.path);
 
-      if (this.module.exports !== this.exports) {
-        console.log("ModuleJS: 'module.exports' was set: " + this.path);
+      if (self.module.exports !== self.exports) {
+        console.log("ModuleJS: 'module.exports' was set at top-level: " + this.path);
         // 'module.exports' property was directly set, outside of 'load()'
-        this.exports = this.module.exports;
+        self.exports = self.module.exports;
       }
 
       // Module has no dependencies...
-      this._notifyLoaded();
+      self._notifyLoaded();
     }
   }
+
   // Add a listener. Currently the only event is 'load', which need-not be specified
   Module.prototype.addListener = function(callback) {
     this.loadListeners.push(callback);
   }
-  // Called immediately after the script loads from the remote,
-  // and once every time one of the module's defined dependencies
-  // fires off it's load event. If all required deps have finished
-  // loading, then it's time for this module to finish loading
-  Module.prototype._checkDeps = function(err) {
-    var self = this;
-    var loaded = true;
-    for (var i=0, l=self._modules.length; i<l; i++) {
-      var m = self._modules[i];
-      if (!m.loaded) {
-        loaded = false;
-        break;
-      }
-    }
-    if (loaded) this._notifyLoaded();
-  }
+
   // Called after all dependencies have been satisfied. If a
   // factory function had been defined in the 'load()' call,
   // then it is invoked. Then all load listeners for this module
   // are notified. Also sets the 'loaded' flag to true
-  Module.prototype._notifyLoaded = function(err) {
-    this.loaded = true;
-    this.error = err;
-    if (this._factory) {
-      this._executeFactory();
-    }
-    console.log("ModuleJS: Notifying Module Listeners: " + this.path);
+  Module.prototype._notifyLoaded = function() {
+    if (this['loaded']) return; // only notify listeners once
+
+    console.log("ModuleJS: "+this.path+": Notifying Module Listeners");
+    this['loaded'] = true;
 
     var li = this.loadListeners;
     for (var i=0, l=li.length; i<l; i++) {
-      li[i](err);
+      li[i]();
     }
+    delete this.loadListeners;
   }
-  // Executes the factory function that was defined in the 'load()'
-  // call. It first collects the 'exports' of all dependency modules,
-  // then evals the factory function in the module's isolated scope.
-  // The return value is checked, as well as 'module.exports' to see
-  // if they were set, which will override 'exports' if set.
-  Module.prototype._executeFactory = function() {
-    console.log("ModuleJS: Executing Module Factory: " + this.path);
 
-    // At this point, we know that any deps are loaded, so get the
-    // 'exports' object from the loaded Module instance.
-    var deps = [];
-    for (var i=0, l=this._modules.length; i<l; i++) {
-      deps[i] = this._modules[i].exports;
+
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // this function shares the module loading logic with the Module class and the
+  // global 'main' module (the Window). 'this' is either a 'Module' instance or
+  // the global Window object.
+  function createModule(id) {
+    var self = this;
+    self['id'] = id;
+    // Set up the 'exports' object
+    self['exports'] = {};
+    // Set up the 'module' object
+    self['module'] = {
+      'exports': self.exports,
+      'load': load,
+      'id': id
+    };
+
+    // The 'module.load' function. Accepts an array of module ids that are
+    // dependencies. If/Once they're all loaded, the 'factory' function is invoked
+    // `module.load` is allowed to be called multiple times in a module, but only
+    // a call during the top-level execution of the script will have it's 'exports'
+    // properly visisble to other modules.
+    function load(deps, factory) {
+      if (!isArray(deps)) {
+        var argc = arguments.length;
+        deps = Array.prototype.slice.call(arguments, 0, argc-1);
+        factory = arguments[argc-1];
+      }
+      
+      console.log("ModuleJS: "+self.path+": `module.load("+deps+")` being called");
+      self._loadCalled = true;
+
+      var _modules = [];
+      for (var i=0, l=deps.length; i<l; i++) {
+        var m = getModule(deps[i]+'.js');
+        if (!m.loaded) {
+          m.addListener(function() {
+            checkDeps(_modules, factory);
+          });
+        }
+        _modules.push(m);
+      }
+      checkDeps(_modules, factory);
     }
-    this.global.__deps = deps;
-    this.global.__factory = this._factory;
-    // Eval in the module's isolated Sandbox
-    var rtn = this.eval('__factory.apply(exports, __deps)');
-    delete this.global.__deps;
-    delete this.global.__factory;
-    if (this.module.exports !== this.exports) {
-      console.log("ModuleJS: 'module.exports' was set: " + this.path);
-      // 'module.exports' property was directly set
-      this.exports = this.module.exports;
-    } else if (!!rtn && rtn !== this.exports) {
-      console.log("ModuleJS: Object returned from factory function: " + this.path);
-      // something was 'return'ed from the factory function
-      this.exports = rtn;
+
+    // Called during `module.load`, and once for every dependency that still
+    // needs to be loaded's load callback
+    function checkDeps(_modules, factory) {
+      var loaded = true;
+      for (var i=0, l = _modules.length; i<l; i++) {
+        var m = _modules[i];
+        if (!m.loaded) {
+          loaded = false;
+          break;
+        }
+      }
+      if (loaded) {
+        if (factory) {
+          executeFactory(_modules, factory); 
+        }
+        if (self._notifyLoaded) // Not on the global 'main' module
+          self._notifyLoaded();
+      }
     }
+
+    // Executes the specifies factory function with the specified module dependencies
+    function executeFactory(_modules, factory) {
+      console.log("ModuleJS: "+self.path+": Executing Module Factory");
+
+      // At this point, we know that any deps are loaded, so get the
+      // 'exports' object from the loaded Module instance.
+      var deps = [];
+      for (var i=0, l=_modules.length; i<l; i++) {
+        deps[i] = _modules[i].exports;
+      }
+      self.global._deps = deps;
+      self.global._factory = factory;
+      // Eval in the module's isolated Sandbox
+      var rtn = self.eval('var rtn = _factory.apply(exports, _deps);delete _deps; delete _factory; rtn');
+      if (self.module.exports !== self.exports) {
+        // 'module.exports' property was directly set
+        console.log("ModuleJS: "+self.path+": `module.exports` was set inside factory");
+        self.exports = self.module.exports;
+      } else if (!!rtn && rtn !== self.exports) {
+        // something was 'return'ed from the factory function
+        console.log("ModuleJS: "+self.path+": Object returned from factory function");
+        self.exports = rtn;
+      }
+    }
+
+
   }
-  // Returns an absolutized version of the dependency name, based on
-  // this module's base path, etc. '..', '.', are normalized.
-  Module.prototype._absolutize = function(dep) {
-    return dep;
-  }
+
+
+
+
 
   // Extends a the prototype of a Constructor Function
   // with the prototype of a Super Function
@@ -258,4 +271,7 @@
 
   }
 
+  // Make the global window be a pseudo-module
+  createModule.call(window, location.href);
+  window['global'] = window;
 })();
