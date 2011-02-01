@@ -49,7 +49,7 @@ or a standalone 'main' module (i.e. a `<script src="main.js">`, note the name is
 important). A standalone module would be different in the sense that it still is
 part of the regular brower global scope.
 
-So to complete the `foo.js/bar.js` example above, this would br a basic `index.html`:
+So to complete the `foo.js/bar.js` example above, this would be a basic `index.html`:
 
     <!DOCTYPE HTML>
     <html>
