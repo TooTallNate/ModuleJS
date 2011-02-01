@@ -1,12 +1,12 @@
 (function() {
   // cache of loaded/loading modules
-  var modules = {};
+  var cache = {};
 
   // Gets a module from the cache based on it's absolute path
   function getModule(path) {
-    var m = modules[path];
+    var m = cache[path];
     if (!m) {
-      m = modules[path] = new Module(path);
+      m = cache[path] = new Module(path);
     }
     return m;
   }
@@ -25,7 +25,7 @@
     console.log("ModuleJS: Creating Module, path: " + absolutePath);
 
     var self = this;
-    Sandbox.apply(self, arguments);
+    Sandbox.call(self, true);
     self.loadListeners = [];
     self.path = absolutePath;
     self.loaded = false;
@@ -59,6 +59,11 @@
     }, 50);
   }
   extend(Module, Sandbox);
+
+  // Expose the module cache. `module.load('Module', function(Module) {})`
+  // will get you a reference to the Module constructor.
+  Module.cache = cache;
+
   // Internal function that gets called after the script is
   // loaded into the sandbox. It first checks if the loading
   // was successful, then checks to see if the module's "load"
@@ -249,11 +254,8 @@
     return s;
   }
 
-  // For testing. API will most definitely change...
-  function start(path) {
-    new Module(path);
-  }
-  window['start'] = start;
+  function normalize(base, name) {
 
-  window['Module'] = Module;
+  }
+
 })();
