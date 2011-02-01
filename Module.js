@@ -2,6 +2,19 @@
   // cache of loaded/loading modules
   var cache = {};
 
+  // Holds absolute module ids into translated absolute URLs. This
+  // is useful for predetermined module ids to go to specific URLs.
+  var provides = {};
+
+  // Add a pre-defined module ID / URL combo. Example:
+  //    module.provide('underscore', 'http://localhost/js/underscore.js');
+  // In a Module:
+  //    module.load('underscore', function(_) { ... });
+  function provide(id, url) {
+    provides[id] = url;
+  }
+  
+
   // Gets a module from the cache based on it's absolute path
   function getModule(path) {
     var m = cache[path];
@@ -22,12 +35,11 @@
   // that gets loaded. It has an absolute path, an "exports"
   // Object that gets injected into the module's sandbox scope.
   function Module(absolutePath) {
-    console.log("ModuleJS: Creating Module, path: " + absolutePath);
+    console.log("ModuleJS: "+absolutePath+": Creating Module");
 
     var self = this;
     Sandbox.call(self, true);
     self.loadListeners = [];
-    self.path = absolutePath;
     self.loaded = false;
 
     createModule.call(self, absolutePath);
@@ -40,8 +52,8 @@
     // a few ms before adding the <script> to the <iframe>
     setTimeout(function() {
       // load the remote script, invoke '_onLoad' when it finishes
-      self.load(self.path, function() {
-        self._onLoad.apply(self, arguments);
+      self.load(absolutePath, function(err) {
+        self._onLoad(err);
       });
     }, 50);
   }
@@ -57,14 +69,14 @@
   // function was called, defining a factory function and any
   // dependencies.
   Module.prototype._onLoad = function(err) {
-    console.log("ModuleJS: Module <script> onload, path: " + this.path);
-
     var self = this;
+    console.log("ModuleJS: "+self.id+": Module <script> onload");
+
     if (!self._loadCalled) {
-      console.log("ModuleJS: Module did not call 'load()': " + this.path);
+      console.log("ModuleJS: "+self.id+": Module did not call 'load()'");
 
       if (self.module.exports !== self.exports) {
-        console.log("ModuleJS: 'module.exports' was set at top-level: " + this.path);
+        console.log("ModuleJS: "+self.id+": `module.exports` was set at the top-level");
         // 'module.exports' property was directly set, outside of 'load()'
         self.exports = self.module.exports;
       }
@@ -86,7 +98,7 @@
   Module.prototype._notifyLoaded = function() {
     if (this['loaded']) return; // only notify listeners once
 
-    console.log("ModuleJS: "+this.path+": Notifying Module Listeners");
+    console.log("ModuleJS: "+this.id+": Notifying Module Listeners");
     this['loaded'] = true;
 
     var li = this.loadListeners;
@@ -104,6 +116,7 @@
   // the global Window object.
   function createModule(id) {
     var self = this;
+    var parsed = parseUri(id);
     self['id'] = id;
     // Set up the 'exports' object
     self['exports'] = {};
@@ -126,12 +139,12 @@
         factory = arguments[argc-1];
       }
       
-      console.log("ModuleJS: "+self.path+": `module.load("+deps+")` being called");
+      console.log("ModuleJS: "+self.id+": `module.load("+deps+")` being called");
       self._loadCalled = true;
 
       var _modules = [];
       for (var i=0, l=deps.length; i<l; i++) {
-        var m = getModule(deps[i]+'.js');
+        var m = getModule(absolutize(parsed, deps[i]));
         if (!m.loaded) {
           m.addListener(function() {
             checkDeps(_modules, factory);
@@ -164,7 +177,7 @@
 
     // Executes the specifies factory function with the specified module dependencies
     function executeFactory(_modules, factory) {
-      console.log("ModuleJS: "+self.path+": Executing Module Factory");
+      console.log("ModuleJS: "+self.id+": Executing Module Factory");
 
       // At this point, we know that any deps are loaded, so get the
       // 'exports' object from the loaded Module instance.
@@ -175,14 +188,18 @@
       self.global._deps = deps;
       self.global._factory = factory;
       // Eval in the module's isolated Sandbox
-      var rtn = self.eval('var rtn = _factory.apply(exports, _deps);delete _deps; delete _factory; rtn');
+      var rtn = self.eval('(function() { '+
+        'var rtn = _factory.apply(exports, _deps);'+
+        'delete _deps;'+
+        'delete _factory;'+
+        'return rtn; })()');
       if (self.module.exports !== self.exports) {
         // 'module.exports' property was directly set
-        console.log("ModuleJS: "+self.path+": `module.exports` was set inside factory");
+        console.log("ModuleJS: "+self.id+": `module.exports` was set inside factory");
         self.exports = self.module.exports;
       } else if (!!rtn && rtn !== self.exports) {
         // something was 'return'ed from the factory function
-        console.log("ModuleJS: "+self.path+": Object returned from factory function");
+        console.log("ModuleJS: "+self.id+": Object returned from factory function");
         self.exports = rtn;
       }
     }
@@ -193,6 +210,28 @@
 
 
 
+  var DEFAULT_EXTENSION = '.js';
+  var EXTENSION_CHECK = new RegExp('^.*\\'+DEFAULT_EXTENSION+'$');
+  var ABSOLUTE_URL_CHECK = /:\/\//;
+  function absolutize(parsed, dep) {
+    // First check the `module.provide` case
+    if (dep in provides) return provides[dep];
+
+    if (!EXTENSION_CHECK.test(dep)) {
+      dep += DEFAULT_EXTENSION;
+    }
+    if (ABSOLUTE_URL_CHECK.test(dep)) {
+      return dep;
+    }
+
+    var rtn = parsed.protocol + '://' + parsed.authority;
+    if (dep[0] == '/') { // Based on root
+      rtn += dep;
+    } else { // A relative dependency
+      rtn += realpath(parsed.directory + dep);
+    }
+    return rtn;
+  }
 
   // Extends a the prototype of a Constructor Function
   // with the prototype of a Super Function
@@ -204,28 +243,24 @@
     bare = undefined;
   }
 
-  // Not implemented in most browsers...
-  function isArray(array) {
+  // Part of EcmaScript 5, not implemented (yet) in most browsers...
+  var isArray = Array.isArray || function (array) {
     return Object.prototype.toString.call(array) === '[object Array]';
   }
 
   // Respectfully borrowed from BravoJS.
-
-  /** Canonicalize path, compacting slashes and dots per basic UNIX rules.
-   *  Treats paths with trailing slashes as though they end with INDEX instead.
-   *  Not rigorous. */
+  // Canonicalize path, compacting slashes and dots per basic UNIX rules.
+  // Treats paths with trailing slashes as though they end with 'index.js'.
+  // Not rigorous.
   function realpath(path) {
-    if (typeof path !== "string")
-      path = path.toString();
 
     var oldPath = path.split('/');
     var newPath = [];
-    var i;
 
     if (path.charAt(path.length - 1) === '/')
-      oldPath.push("INDEX");
+      oldPath.push("index.js");
 
-    for (i = 0; i < oldPath.length; i++) {
+    for (var i = 0; i < oldPath.length; i++) {
       if (oldPath[i] == '.' || !oldPath[i].length)
         continue;
       if (oldPath[i] == '..') {
@@ -241,37 +276,45 @@
     return newPath.join('/');
   }
 
-  /** Extract the non-directory portion of a path */
-  function basename(path) {
-    if (typeof path !== "string")
-      path = path.toString();
+  // parseUri 1.2.2
+  // (c) Steven Levithan <stevenlevithan.com>
+  // http://blog.stevenlevithan.com/archives/parseuri
+  // MIT License
+  function parseUri (str) {
+    var o   = parseUri.options,
+      m   = o.parser.exec(str),
+      uri = {},
+      i   = o.key.length;
 
-    var s = path.split('/').slice(-1).join('/');
-    if (!s)
-      return path;
-    return s;
+    while (i--) uri[o.key[i]] = m[i] || "";
+
+    if (uri['query']) {
+      uri[o.q.name] = {};
+      uri[o.key[12]].replace(o.q.parser, function ($0, $1, $2) {
+        if ($1) uri[o.q.name][$1] = $2;
+      });
+    }
+
+    return uri;
   }
+  parseUri.options = {
+    key: ["source","protocol","authority","userInfo","user","password","host","port","relative","path","directory","file","query","anchor"],
+    q:   {
+      name:   "queryKey",
+      parser: /(?:^|&)([^&=]*)=?([^&]*)/g
+    },
+    parser: /^(?:([^:\/?#]+):)?(?:\/\/((?:(([^:@]*)(?::([^:@]*))?)?@)?([^:\/?#]*)(?::(\d*))?))?((((?:[^?#\/]*\/)*)([^?#]*))(?:\?([^#]*))?(?:#(.*))?)/
+  };
 
-  /** Extract the directory portion of a path */
-  function dirname(path) {
-    if (typeof path !== "string")
-      path = path.toString();
 
-    if (path.charAt(path.length - 1) === '/')
-      return path.slice(0,-1);
 
-    var s = path.split('/').slice(0,-1).join('/');
-    if (!s)
-      return ".";
-
-    return s;
-  }
-
-  function normalize(base, name) {
-
-  }
 
   // Make the global window be a pseudo-module
   createModule.call(window, location.href);
-  window['global'] = window;
+
+  // Expose `module.provide` to the global scope ('main' module)
+  window.module.provide = provide;
+
+  if (window['global'] !== window)
+    window['global'] = window;
 })();
