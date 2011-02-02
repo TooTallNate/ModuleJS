@@ -24,10 +24,21 @@
     return m;
   }
 
-  // Logging function, since I can't seem to get `console.log` to work in the modules...
-  function print() {
+  // Fake `console.log()` function, available to modules
+  var apply = Function.prototype.apply;
+  function log() {
+    // proxy to the native `console.log` if it exists
+    var c = window['console'];
+    if (!!c && c['log']) {
+      apply.call(c['log'], c, arguments);
+    }
+    // Also add logging statements into an HTML tag on the page
+    // with 'id="console"'
+    var cEle = document.getElementById("console");
+    if (!cEle) return;
     for (var i=0, l=arguments.length; i<l; i++) {
-      document.getElementById("stdout").innerHTML += arguments[i] + '\n';
+      var text = document.createTextNode(String(arguments[i]) + '\n');
+      cEle.appendChild(text);
     }
   }
 
@@ -35,7 +46,7 @@
   // that gets loaded. It has an absolute path, an "exports"
   // Object that gets injected into the module's sandbox scope.
   function Module(absolutePath) {
-    console.log("ModuleJS: "+absolutePath+": Creating Module");
+    log("ModuleJS: "+absolutePath+": Creating Module");
 
     var self = this;
     Sandbox.call(self, true);
@@ -46,7 +57,9 @@
 
     self.global.module = self.module;
     self.global.exports = self.exports;
-    self.global.print = print;
+    self.global.console = {
+      'log': log
+    }
 
     // HACK: Firefox (probably others) seem to need us to wait
     // a few ms before adding the <script> to the <iframe>
@@ -70,13 +83,13 @@
   // dependencies.
   Module.prototype._onLoad = function(err) {
     var self = this;
-    console.log("ModuleJS: "+self.id+": Module <script> onload");
+    log("ModuleJS: "+self.id+": Module <script> onload");
 
     if (!self._loadCalled) {
-      console.log("ModuleJS: "+self.id+": Module did not call 'load()'");
+      log("ModuleJS: "+self.id+": Module did not call 'load()'");
 
       if (self.module.exports !== self.exports) {
-        console.log("ModuleJS: "+self.id+": `module.exports` was set at the top-level");
+        log("ModuleJS: "+self.id+": `module.exports` was set at the top-level");
         // 'module.exports' property was directly set, outside of 'load()'
         self.exports = self.module.exports;
       }
@@ -98,7 +111,7 @@
   Module.prototype._notifyLoaded = function() {
     if (this['loaded']) return; // only notify listeners once
 
-    console.log("ModuleJS: "+this.id+": Notifying Module Listeners");
+    log("ModuleJS: "+this.id+": Notifying Module Listeners");
     this['loaded'] = true;
 
     var li = this.loadListeners;
@@ -139,7 +152,7 @@
         factory = arguments[argc-1];
       }
       
-      console.log("ModuleJS: "+self.id+": `module.load("+deps+")` being called");
+      log("ModuleJS: "+self.id+": `module.load("+deps+")` being called");
       self._loadCalled = true;
 
       var _modules = [];
@@ -177,7 +190,7 @@
 
     // Executes the specifies factory function with the specified module dependencies
     function executeFactory(_modules, factory) {
-      console.log("ModuleJS: "+self.id+": Executing Module Factory");
+      log("ModuleJS: "+self.id+": Executing Module Factory");
 
       // At this point, we know that any deps are loaded, so get the
       // 'exports' object from the loaded Module instance.
@@ -195,11 +208,11 @@
         'return rtn; })()');
       if (self.module.exports !== self.exports) {
         // 'module.exports' property was directly set
-        console.log("ModuleJS: "+self.id+": `module.exports` was set inside factory");
+        log("ModuleJS: "+self.id+": `module.exports` was set inside factory");
         self.exports = self.module.exports;
       } else if (!!rtn && rtn !== self.exports) {
         // something was 'return'ed from the factory function
-        console.log("ModuleJS: "+self.id+": Object returned from factory function");
+        log("ModuleJS: "+self.id+": Object returned from factory function");
         self.exports = rtn;
       }
     }
