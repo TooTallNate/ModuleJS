@@ -26,6 +26,8 @@
 
   // Fake `console.log()` function, available to modules
   var apply = Function.prototype.apply;
+  var join = Array.prototype.join;
+  var NEWLINE = '\r\n';
   function log() {
     // proxy to the native `console.log` if it exists
     var c = window['console'];
@@ -35,10 +37,9 @@
     // Also add logging statements into an HTML tag on the page
     // with 'id="console"'
     var cEle = document.getElementById("console");
-    if (!cEle) return;
-    for (var i=0, l=arguments.length; i<l; i++) {
-      var text = document.createTextNode(String(arguments[i]) + '\n');
-      cEle.appendChild(text);
+    if (!!cEle) {
+      var str = join.call(arguments, '  ') + NEWLINE;
+      cEle.appendChild(document.createTextNode(str));
     }
   }
 
