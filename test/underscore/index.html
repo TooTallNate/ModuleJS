@@ -3,18 +3,15 @@
   <head>
     <title>ModuleJS Tests: UnderscoreJS Library</title>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <link rel="stylesheet" type="text/css" href="../../example/console.css">
     <script type="text/javascript" src="../../SandboxJS/Sandbox.min.js"></script>
     <script type="text/javascript" src="../../Module.js"></script>
     <script type="text/javascript">
       window.onload = function() {
         module.provide('underscore', 'http://documentcloud.github.com/underscore/underscore.js');
-        module.load('./main', function(main) {
-          console.log("DONE!");
-        });
+        module.load('./main', function(main) {});
       }
     </script>
   </head>
-  <body>
-    <textarea id="stdout"></textarea>
-  </body>
+  <body id="console"></body>
 </html>
