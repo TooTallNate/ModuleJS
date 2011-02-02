@@ -204,9 +204,17 @@
       // Eval in the module's isolated Sandbox
       var rtn = self.eval('(function() { '+
         'var rtn = _factory.apply(exports, _deps);'+
-        'delete _deps;'+
-        'delete _factory;'+
+        'try {'+
+          'delete this._deps;'+
+          'delete this._factory;'+
+        '} catch(e){}'+
         'return rtn; })()');
+      if (!!self.global._deps) {
+        self.global._deps = undefined;
+      }
+      if (!!self.global._factory) {
+        self.global._factory = undefined;
+      }
       if (self.module.exports !== self.exports) {
         // 'module.exports' property was directly set
         log("ModuleJS: "+self.id+": `module.exports` was set inside factory");
