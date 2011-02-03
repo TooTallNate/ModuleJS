@@ -55,6 +55,7 @@
     self.loaded = false;
 
     createModule.call(self, absolutePath);
+    self.module.main = window['module'];
 
     self.global.module = self.module;
     self.global.exports = self.exports;
