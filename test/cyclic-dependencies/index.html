@@ -1,0 +1,16 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <title>ModuleJS Tests: Cyclic Dependencies</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <link rel="stylesheet" type="text/css" href="../../example/console.css">
+    <script type="text/javascript" src="../../SandboxJS/Sandbox.min.js"></script>
+    <script type="text/javascript" src="../../Module.js"></script>
+    <script type="text/javascript">
+      window.onload = function() {
+        module.load('./main', function() {});
+      }
+    </script>
+  </head>
+  <body id="console"></body>
+</html>

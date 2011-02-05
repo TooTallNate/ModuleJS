@@ -149,9 +149,14 @@
     // properly visisble to other modules.
     function load(deps, factory) {
       if (!isArray(deps)) {
-        var argc = arguments.length;
-        deps = Array.prototype.slice.call(arguments, 0, argc-1);
-        factory = arguments[argc-1];
+        if (typeof(deps) == 'function') {
+          factory = deps;
+          deps = [];
+        } else {
+          var argc = arguments.length;
+          deps = Array.prototype.slice.call(arguments, 0, argc-1);
+          factory = arguments[argc-1];
+        }
       }
       
       log("ModuleJS: "+self.id+": `module.load("+deps+")` being called");
@@ -200,21 +205,23 @@
       for (var i=0, l=_modules.length; i<l; i++) {
         deps[i] = _modules[i].exports;
       }
-      self.global._deps = deps;
-      self.global._factory = factory;
+      var depsName = randomVarName();
+      var factoryName = randomVarName();
+      self.global[depsName] = deps;
+      self.global[factoryName] = factory;
       // Eval in the module's isolated Sandbox
       var rtn = self.eval('(function() { '+
-        'var rtn = _factory.apply(exports, _deps);'+
+        'var rtn = this["'+factoryName+'"].apply(exports, this["'+depsName+'"]); '+
         'try {'+
-          'delete this._deps;'+
-          'delete this._factory;'+
+          'delete this["'+depsName+'"];'+
+          'delete this["'+factoryName+'"];'+
         '} catch(e){}'+
         'return rtn; })()');
-      if (!!self.global._deps) {
-        self.global._deps = undefined;
+      if (!!self.global[depsName]) {
+        self.global[depsName] = undefined;
       }
-      if (!!self.global._factory) {
-        self.global._factory = undefined;
+      if (!!self.global[factoryName]) {
+        self.global[factoryName] = undefined;
       }
       if (self.module.exports !== self.exports) {
         // 'module.exports' property was directly set
@@ -269,6 +276,11 @@
   // Part of EcmaScript 5, not implemented (yet) in most browsers...
   var isArray = Array.isArray || function (array) {
     return Object.prototype.toString.call(array) === '[object Array]';
+  }
+
+  // Generate a random variable name
+  function randomVarName() {
+    return Math.round((new Date()).getTime() * Math.random()) + "";
   }
 
   // Respectfully borrowed from BravoJS.
