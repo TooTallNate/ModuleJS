@@ -1,3 +1,5 @@
+module.main.exports.setTitle("Cyclic Dependencies");
+
 // Cyclic dependencies are supported with the idea of a "top-level"
 // exports followed by another module definition with cyclic dependencies.
 // Thus, a module that has cyclic dependencies (that is, a dependency that itself
