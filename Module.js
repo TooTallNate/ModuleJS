@@ -137,6 +137,7 @@
     self['exports'] = {};
     // Set up the 'module' object
     self['module'] = {
+      'provide': provide,
       'exports': self.exports,
       'load': load,
       'id': id
@@ -346,9 +347,6 @@
 
   // Make the global window be a pseudo-module
   createModule.call(window, location.href);
-
-  // Expose `module.provide` to the global scope ('main' module)
-  window.module.provide = provide;
 
   if (window['global'] !== window)
     window['global'] = window;
