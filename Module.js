@@ -240,7 +240,7 @@
 
 
 
-
+  var DEFAULT_NAME = 'index';
   var DEFAULT_EXTENSION = '.js';
   var EXTENSION_CHECK = new RegExp('^.*\\'+DEFAULT_EXTENSION+'$');
   var ABSOLUTE_URL_CHECK = /:\/\//;
@@ -248,6 +248,9 @@
     // First check the `module.provide` case
     if (dep in provides) return provides[dep];
 
+    if (dep.charAt(dep.length - 1) === '/') {
+      dep += DEFAULT_NAME;
+    }
     if (!EXTENSION_CHECK.test(dep)) {
       dep += DEFAULT_EXTENSION;
     }
@@ -293,9 +296,6 @@
     var oldPath = path.split('/');
     var newPath = [];
 
-    if (path.charAt(path.length - 1) === '/')
-      oldPath.push("index.js");
-
     for (var i = 0; i < oldPath.length; i++) {
       if (oldPath[i] == '.' || !oldPath[i].length)
         continue;
@@ -317,7 +317,7 @@
   // http://blog.stevenlevithan.com/archives/parseuri
   // MIT License
   function parseUri (str) {
-    var o   = parseUri.options,
+    var o  = parseUri.options,
       m   = o.parser.exec(str),
       uri = {},
       i   = o.key.length;
