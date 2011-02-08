@@ -4,3 +4,21 @@
   font-family: Consolas, monospace;
   white-space: pre;
 }
+
+#console a:link {
+  color: #73cd22;
+}
+
+#console a:visited {
+  color: #73cd22;
+}
+
+#console a:hover {
+  color: #c5f40b;
+  text-decoration: none;
+}
+
+#console a:active {
+  color: #f4840b;
+  text-decoration: none;
+}
