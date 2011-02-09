@@ -1,0 +1,22 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <title>ModuleJS Test Case: DOM Interaction from a "module"</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <link rel="stylesheet" type="text/css" href="../console.css">
+    <script type="text/javascript" src="../../SandboxJS/Sandbox.min.js"></script>
+    <script type="text/javascript" src="../../Module.js"></script>
+  </head>
+  <body id="console">
+    <script type="text/javascript">
+
+      // Export the global 'document', for the 'DOM.js' module
+      exports.document = document;
+      exports.setTimeout = setTimeout;
+
+      // 'main.js' will attempt to dynamically add elements
+      // to the <body> of the test page
+      module.load('./main', function() {});
+    </script>
+  </body>
+</html>
