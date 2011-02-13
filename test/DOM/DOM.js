@@ -28,5 +28,5 @@ exports.Element = Element;
 
 exports.insert = function insert(element) {
   console.log("appending <"+element.type+"> to <body>");
-  return d.body.appendChild(element.ele);
+  return d.body.insertBefore(element.ele, d.body.firstChild);
 }
