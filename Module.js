@@ -13,7 +13,24 @@
   function provide(id, url) {
     provides[id] = url;
   }
-  
+
+  // May be called (usually by the containing web page, not usually 
+  // by modules themselves) to directly define a dependency and it's
+  // provided exports.
+  //    module.define('foo', {
+  //      bar: new Date()
+  //    });
+  // So after this is called, any module that depends on the absolute
+  // "id" 'foo' will be given the exports object passed in, instead of 
+  // going through the usual module-loading logic.
+  function define(id, exports) {
+    var randomUrl = "define_module_url_" + randomVarName();
+    cache[randomUrl] = {
+      "exports": exports,
+      "loaded": true
+    };
+    provide(id, randomUrl);
+  } 
 
   // Gets a module from the cache based on it's absolute path
   function getModule(path) {
@@ -140,6 +157,7 @@
       'provide': provide,
       'exports': self.exports,
       'load': load,
+      'define': define,
       'id': id
     };
 
