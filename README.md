@@ -59,7 +59,7 @@ So to complete the `foo.js/bar.js` example above, this would be a basic `index.h
         <script type="text/javascript" src="Module.js"></script>
         <script type="text/javascript">
 
-          module.load('./bar', function(test) {
+          module.load('./bar', function(bar) {
             console.log("Done!");
           });
 
