@@ -7,7 +7,8 @@ web application).
 
 It uses [SandboxJS][] underneath the hood in order to execute modules within
 their own, isolated, JavaScript scope. This means that executed modules do NOT
-have access to the global `window` or `document` objects.
+have access to the global `window` or `document` objects, unless the page author
+explicitly allows it.
 
 
 Writing a Module
@@ -56,15 +57,16 @@ So to complete the `foo.js/bar.js` example above, this would be a basic `index.h
       <head>
         <script type="text/javascript" src="Sandbox.js"></script>
         <script type="text/javascript" src="Module.js"></script>
-      </head>
-      <body>
         <script type="text/javascript">
 
           module.load('./bar', function(test) {
-            conosle.log("Done!");
+            console.log("Done!");
           });
 
         </script>
+      </head>
+      <body>
+
       </body>
     </html>
 
