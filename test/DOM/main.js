@@ -10,7 +10,7 @@ module.load('./DOM', function(DOM) {
   var foo = new (DOM.Element)('h1');
 
   // Sets the 'innerHTML'
-  foo.update('It Works! <a href="..">Go Back</a>');
+  foo.update('It Works! <a href="../index.html">Go Back</a>');
 
   // Appends to the <body> tag
   DOM.insert(foo);
