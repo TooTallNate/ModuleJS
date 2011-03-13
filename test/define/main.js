@@ -1,4 +1,4 @@
-module.main.exports.setTitle("Defined Dependancies");
+module.main.exports.setTitle("Defined Dependencies");
 
 module.define('defined', {"foo": "yes it was!"});
 module.load('defined', function(def) {
