@@ -39,11 +39,11 @@ function onResponse(response) {
 }
 
 request.end(querystring.stringify({
-    'compilation_level': 'ADVANCED_OPTIMIZATIONS',
-    'output_format': 'json',
-    'output_info': ['compiled_code', 'warnings', 'errors', 'statistics'],
-    'formatting': 'pretty_print',
-    'js_code': IN_FILES.map(function(file) {
-      return fs.readFileSync(path.join(__dirname, file), 'utf8');
-    }).join(';')
+  'compilation_level': 'ADVANCED_OPTIMIZATIONS',
+  'output_format': 'json',
+  'output_info': ['compiled_code', 'warnings', 'errors', 'statistics'],
+  //'formatting': 'pretty_print',
+  'js_code': IN_FILES.map(function(file) {
+    return fs.readFileSync(path.join(__dirname, file), 'utf8');
+  }).join(';')
 }, '&', '=', false));
