@@ -69,14 +69,15 @@
     var self = this;
     Sandbox.call(self, true);
     self.loadListeners = [];
-    self.loaded = false;
+    self['loaded'] = false;
 
     createModule.call(self, absolutePath);
-    self.module.main = window['module'];
+    self['module']['main'] = window['module'];
 
-    self.global.module = self.module;
-    self.global.exports = self.exports;
-    self.global.console = {
+    var moduleGlobal = self['global'];
+    moduleGlobal['module'] = self['module'];
+    moduleGlobal['exports'] = self['exports'];
+    moduleGlobal['console'] = {
       'log': log
     }
 
@@ -84,7 +85,7 @@
     // a few ms before adding the <script> to the <iframe>
     setTimeout(function() {
       // load the remote script, invoke '_onLoad' when it finishes
-      self.load(absolutePath, function(err) {
+      self['load'](absolutePath, function(err) {
         self._onLoad(err);
       });
     }, 50);
@@ -102,15 +103,15 @@
   // dependencies.
   Module.prototype._onLoad = function(err) {
     var self = this;
-    log("ModuleJS: "+self.id+": Module <script> onload");
+    log("ModuleJS: "+self['id']+": Module <script> onload");
 
     if (!self._loadCalled) {
-      log("ModuleJS: "+self.id+": Module did not call 'load()'");
+      log("ModuleJS: "+self['id']+": Module did not call 'load()'");
 
-      if (self.module.exports !== self.exports) {
-        log("ModuleJS: "+self.id+": `module.exports` was set at the top-level");
+      if (self['module']['exports'] !== self['exports']) {
+        log("ModuleJS: "+self['id']+": `module.exports` was set at the top-level");
         // 'module.exports' property was directly set, outside of 'load()'
-        self.exports = self.module.exports;
+        self['exports'] = self['module']['exports'];
       }
 
       // Module has no dependencies...
@@ -119,7 +120,7 @@
   }
 
   // Add a listener. Currently the only event is 'load', which need-not be specified
-  Module.prototype.addListener = function(callback) {
+  Module.prototype['addListener'] = function(callback) {
     this.loadListeners.push(callback);
   }
 
@@ -155,7 +156,7 @@
     // Set up the 'module' object
     self['module'] = {
       'provide': provide,
-      'exports': self.exports,
+      'exports': self['exports'],
       'load': load,
       'define': define,
       'id': id
@@ -178,14 +179,14 @@
         }
       }
       
-      log("ModuleJS: "+self.id+": `module.load("+deps+")` being called");
+      log("ModuleJS: "+self['id']+": `module.load("+deps+")` being called");
       self._loadCalled = true;
 
       var _modules = [];
       for (var i=0, l=deps.length; i<l; i++) {
         var m = getModule(absolutize(parsed, deps[i]));
         if (!m.loaded) {
-          m.addListener(function() {
+          m['addListener'](function() {
             checkDeps(_modules, factory);
           });
         }
@@ -200,7 +201,7 @@
       var loaded = true;
       for (var i=0, l = _modules.length; i<l; i++) {
         var m = _modules[i];
-        if (!m.loaded) {
+        if (!m['loaded']) {
           loaded = false;
           break;
         }
@@ -216,18 +217,18 @@
 
     // Executes the specifies factory function with the specified module dependencies
     function executeFactory(_modules, factory) {
-      log("ModuleJS: "+self.id+": Executing Module Factory");
+      log("ModuleJS: "+self['id']+": Executing Module Factory");
 
       // At this point, we know that any deps are loaded, so get the
       // 'exports' object from the loaded Module instance.
       var deps = [];
       for (var i=0, l=_modules.length; i<l; i++) {
-        deps[i] = _modules[i].exports;
+        deps[i] = _modules[i]['exports'];
       }
       var depsName = randomVarName();
       var factoryName = randomVarName();
-      self.global[depsName] = deps;
-      self.global[factoryName] = factory;
+      self['global'][depsName] = deps;
+      self['global'][factoryName] = factory;
       // Eval in the module's isolated Sandbox
       var rtn = self.eval('(function() { '+
         'var rtn = this["'+factoryName+'"].apply(exports, this["'+depsName+'"]); '+
@@ -236,20 +237,20 @@
           'delete this["'+factoryName+'"];'+
         '} catch(e){}'+
         'return rtn; })()');
-      if (!!self.global[depsName]) {
-        self.global[depsName] = undefined;
+      if (!!self['global'][depsName]) {
+        self['global'][depsName] = undefined;
       }
-      if (!!self.global[factoryName]) {
-        self.global[factoryName] = undefined;
+      if (!!self['global'][factoryName]) {
+        self['global'][factoryName] = undefined;
       }
-      if (self.module.exports !== self.exports) {
+      if (self['module']['exports'] !== self['exports']) {
         // 'module.exports' property was directly set
-        log("ModuleJS: "+self.id+": `module.exports` was set inside factory");
-        self.exports = self.module.exports;
-      } else if (!!rtn && rtn !== self.exports) {
+        log("ModuleJS: "+self['id']+": `module.exports` was set inside factory");
+        self['exports'] = self['module']['exports'];
+      } else if (!!rtn && rtn !== self['exports']) {
         // something was 'return'ed from the factory function
-        log("ModuleJS: "+self.id+": Object returned from factory function");
-        self.exports = rtn;
+        log("ModuleJS: "+self['id']+": Object returned from factory function");
+        self['exports'] = rtn;
       }
     }
 
@@ -280,7 +281,7 @@
     if (dep[0] == '/') { // Based on root
       rtn += dep;
     } else { // A relative dependency
-      rtn += realpath(parsed.directory + dep);
+      rtn += realpath(parsed['directory'] + dep);
     }
     return rtn;
   }
@@ -335,7 +336,7 @@
   // http://blog.stevenlevithan.com/archives/parseuri
   // MIT License
   function parseUri (str) {
-    var o  = parseUri.options,
+    var o  = parseUri['options'],
       m   = o.parser.exec(str),
       uri = {},
       i   = o.key.length;
@@ -351,7 +352,7 @@
 
     return uri;
   }
-  parseUri.options = {
+  parseUri['options'] = {
     key: ["source","protocol","authority","userInfo","user","password","host","port","relative","path","directory","file","query","anchor"],
     q:   {
       name:   "queryKey",

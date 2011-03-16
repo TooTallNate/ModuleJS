@@ -1,0 +1,49 @@
+#!/usr/bin/env node
+
+var fs = require('fs');
+var http = require('http');
+var path = require('path');
+var querystring = require('querystring');
+
+var IN_FILES = [ "SandboxJS/Sandbox.js", "Module.js" ];
+
+var compilerUrl = 'closure-compiler.appspot.com';
+var options = {
+  host: compilerUrl,
+  port: 80,
+  method: 'POST',
+  path: '/compile', 
+  headers: {
+    'Host': compilerUrl,
+    'Content-Type': 'application/x-www-form-urlencoded'
+  }
+};
+var request = http.request(options, onResponse);
+
+function onResponse(response) {
+  var res = '';
+  response.setEncoding('utf8');
+  response.on('data', function(chunk) {
+    res += chunk;
+  });
+  response.on('end', function() {
+    var json = JSON.parse(res);
+    var compiledCode = json.compiledCode;
+    delete json.compiledCode;
+    console.log(json);
+        
+    outputFilename = path.join(__dirname, "Module.min.js");
+    console.log('\nSaving compiled code to "'+outputFilename+'"');
+    fs.writeFileSync(outputFilename, compiledCode);
+  });
+}
+
+request.end(querystring.stringify({
+    'compilation_level': 'ADVANCED_OPTIMIZATIONS',
+    'output_format': 'json',
+    'output_info': ['compiled_code', 'warnings', 'errors', 'statistics'],
+    'formatting': 'pretty_print',
+    'js_code': IN_FILES.map(function(file) {
+      return fs.readFileSync(path.join(__dirname, file), 'utf8');
+    }).join(';')
+}, '&', '=', false));
