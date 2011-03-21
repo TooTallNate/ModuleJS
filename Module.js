@@ -131,7 +131,7 @@
   Module.prototype._notifyLoaded = function() {
     if (this['loaded']) return; // only notify listeners once
 
-    log("ModuleJS: "+this.id+": Notifying Module Listeners");
+    log("ModuleJS: "+this['id']+": Notifying Module Listeners");
     this['loaded'] = true;
 
     var li = this.loadListeners;
@@ -185,7 +185,7 @@
       var _modules = [];
       for (var i=0, l=deps.length; i<l; i++) {
         var m = getModule(absolutize(parsed, deps[i]));
-        if (!m.loaded) {
+        if (!m['loaded']) {
           m['addListener'](function() {
             checkDeps(_modules, factory);
           });
@@ -277,7 +277,7 @@
       return dep;
     }
 
-    var rtn = parsed.protocol + '://' + parsed.authority;
+    var rtn = parsed['protocol'] + '://' + parsed['authority'];
     if (dep[0] == '/') { // Based on root
       rtn += dep;
     } else { // A relative dependency
