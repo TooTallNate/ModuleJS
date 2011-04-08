@@ -363,7 +363,13 @@
     parser: /^(?:([^:\/?#]+):)?(?:\/\/((?:(([^:@]*)(?::([^:@]*))?)?@)?([^:\/?#]*)(?::(\d*))?))?((((?:[^?#\/]*\/)*)([^?#]*))(?:\?([^#]*))?(?:#(.*))?)/
   };
 
-
+  // ModuleJS offers a pre-defined 'path' module, since these functions
+  // are used throughout the module-loading logic anyways.
+  define('path', {
+    'absolutize': absolutize,
+    'parse': parseUri,
+    'realpath': realpath
+  });
 
 
   // Make the global window be a pseudo-module
