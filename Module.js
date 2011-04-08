@@ -167,6 +167,7 @@
     // `module.load` is allowed to be called multiple times in a module, but only
     // a call during the top-level execution of the script will have it's 'exports'
     // properly visisble to other modules.
+    // The low-level 'Module' instances are returned in an Array
     function load(deps, factory) {
       if (!isArray(deps)) {
         if (typeof(deps) == 'function') {
@@ -193,6 +194,7 @@
         _modules.push(m);
       }
       checkDeps(_modules, factory);
+      return _modules;
     }
 
     // Called during `module.load`, and once for every dependency that still
